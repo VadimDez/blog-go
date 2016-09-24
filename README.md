@@ -1,13 +1,15 @@
-### Wiki go
+### Blog
+
+Blog system written with `Golang`
 
 ##### Run
 
 build
 ```
-go build wiki.go 
+go build blog.go 
 ```
 and run
 
 ```
-./wiki
+./blog
 ```
