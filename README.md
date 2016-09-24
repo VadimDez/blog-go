@@ -1,8 +1,8 @@
 ### Blog
 
-Blog system written with `Golang`
+> Blog system written in `Golang`.
 
-##### Run
+#### Run
 
 build
 ```
