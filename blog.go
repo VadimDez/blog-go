@@ -14,7 +14,7 @@ import (
 )
 
 var templates = template.Must(template.ParseFiles("./tmpl/index.html", "./tmpl/edit.html", "./tmpl/view.html"))
-var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+var validPath = regexp.MustCompile("^/(new/?|(edit|save|view)/([0-9]+))$")
 const PORT = 8080
 var DATABASE *sql.DB
 
@@ -52,7 +52,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, id int64) {
 	p, err := loadPage(id)
 
 	if err != nil {
-	//	http.Redirect(w, r, "/edit/" + title, http.StatusFound)
+		log.Fatalf("View: Load error: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -68,6 +68,10 @@ func editHandler(w http.ResponseWriter, r *http.Request, id int64) {
 	}
 
 	renderTemplate(w, "edit", p)
+}
+
+func newHandler(w http.ResponseWriter, r *http.Request, id int64) {
+	renderTemplate(w, "edit", &Page{})
 }
 
 func saveHandler(w http.ResponseWriter, r *http.Request, id int64) {
@@ -110,12 +114,7 @@ func makeHandler(fn func (http.ResponseWriter, *http.Request, int64)) http.Handl
 			return
 		}
 
-		id, err := strconv.ParseInt(m[2], 10, 32)
-
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
+		id, _ := strconv.ParseInt(m[3], 10, 32)
 
 		fn(w, r, id)
 	}
@@ -178,6 +177,7 @@ func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
+	http.HandleFunc("/new/", makeHandler(newHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
 
 	port := fmt.Sprintf(":%d", PORT)
