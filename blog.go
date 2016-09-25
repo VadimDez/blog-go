@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"strconv"
 )
 
 var templates = template.Must(template.ParseFiles("./tmpl/index.html", "./tmpl/edit.html", "./tmpl/view.html"))
@@ -28,15 +29,15 @@ func (p *Page) save() error {
 	return ioutil.WriteFile("data/" + filename, p.Content, 0600)
 }
 
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile("data/" + filename)
+func loadPage(id int64) (*Page, error) {
+	var page Page
+	err := DATABASE.QueryRow("SELECT * FROM pages WHERE id = ?", id).Scan(&page.Id, &page.Title, &page.Content)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &Page{Title: title, Content: body}, nil
+	return &page, nil
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
@@ -47,42 +48,58 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	}
 }
 
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
+func viewHandler(w http.ResponseWriter, r *http.Request, id int64) {
+	p, err := loadPage(id)
 
 	if err != nil {
-		http.Redirect(w, r, "/edit/" + title, http.StatusFound)
+	//	http.Redirect(w, r, "/edit/" + title, http.StatusFound)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	renderTemplate(w, "view", p)
 }
 
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
+func editHandler(w http.ResponseWriter, r *http.Request, id int64) {
+	p, err := loadPage(id)
 
 	if err != nil {
-		p = &Page{Title: title}
+		p = &Page{Title: "not found"}
 	}
 
 	renderTemplate(w, "edit", p)
 }
 
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
+func saveHandler(w http.ResponseWriter, r *http.Request, id int64) {
+	title := r.FormValue("title")
+	content := r.FormValue("content")
+	//
+	//p := &Page{ Title: title, Content: []byte(body) }
+	//err := p.save()
+	//
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
 
-	p := &Page{ Title: title, Content: []byte(body) }
-	err := p.save()
+
+	stmt, err := DATABASE.Prepare("INSERT INTO pages(title, content) VALUES(?,?)")
 
 	if err != nil {
+		log.Fatal("Insert issue")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	res, err := stmt.Exec(title, content)
+	affect, err := res.RowsAffected()
+
+	fmt.Println(affect)
+
 	http.Redirect(w, r, "/view/" + title, http.StatusFound)
 }
 
-func makeHandler(fn func (http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+func makeHandler(fn func (http.ResponseWriter, *http.Request, int64)) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		m := validPath.FindStringSubmatch(r.URL.Path)
 
@@ -91,7 +108,14 @@ func makeHandler(fn func (http.ResponseWriter, *http.Request, string)) http.Hand
 			return
 		}
 
-		fn(w, r, m[2])
+		id, err := strconv.ParseInt(m[2], 10, 32)
+
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		fn(w, r, id)
 	}
 }
 
@@ -144,14 +168,6 @@ func db() {
 	if err != nil {
 		log.Fatal("No database")
 	}
-
-	//stmt, err := DATABASE.Prepare("INSERT INTO pages(title, content) VALUES(?,?)")
-	//
-	//if err != nil {
-	//	log.Fatal("Insert issue")
-	//}
-	//
-	//_, err = stmt.Exec("test", "cont")
 }
 
 func main() {
