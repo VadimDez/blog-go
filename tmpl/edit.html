@@ -10,7 +10,7 @@
 <body>
     <h1>Editing {{.Title}}</h1>
 
-    <form action="/save/{{.Title}}" method="POST">
+    <form action="/save/{{ .Id }}" method="POST">
         <div>
             <input value="{{ .Title }}" name="title" type="text" placeholder="Title">
         </div>

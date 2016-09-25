@@ -73,15 +73,6 @@ func editHandler(w http.ResponseWriter, r *http.Request, id int64) {
 func saveHandler(w http.ResponseWriter, r *http.Request, id int64) {
 	title := r.FormValue("title")
 	content := r.FormValue("content")
-	//
-	//p := &Page{ Title: title, Content: []byte(body) }
-	//err := p.save()
-	//
-	//if err != nil {
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
-
 
 	stmt, err := DATABASE.Prepare("INSERT INTO pages(title, content) VALUES(?,?)")
 
@@ -92,11 +83,22 @@ func saveHandler(w http.ResponseWriter, r *http.Request, id int64) {
 	}
 
 	res, err := stmt.Exec(title, content)
-	affect, err := res.RowsAffected()
 
-	fmt.Println(affect)
+	if err != nil {
+		log.Fatal("Insert issue")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	http.Redirect(w, r, "/view/" + title, http.StatusFound)
+	newId, err := res.LastInsertId()
+
+	if err != nil {
+		log.Fatal("Insert issue")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, fmt.Sprintf("/view/%d", newId), http.StatusFound)
 }
 
 func makeHandler(fn func (http.ResponseWriter, *http.Request, int64)) http.HandlerFunc {
