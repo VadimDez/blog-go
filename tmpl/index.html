@@ -9,7 +9,18 @@
     <h1>{{.Name}}</h1>
 </header>
 <section>
-
+    {{ range $element := .Pages }}
+    <article>
+        <header>
+            <h3>
+                <a href="/view/{{ $element.Id }}">{{ $element.Title }}</a>
+            </h3>
+        </header>
+        <section>
+            {{ printf "%s" $element.Content }}
+        </section>
+    </article>
+    {{ end }}
 </section>
 <footer>
     <p>{{.Name}}© {{.Year}}</p>

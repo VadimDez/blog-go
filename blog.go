@@ -18,13 +18,14 @@ const PORT = 8080
 var DATABASE *sql.DB
 
 type Page struct {
+	Id int
 	Title string
-	Body []byte
+	Content []byte
 }
 
 func (p *Page) save() error {
 	filename := p.Title + ".txt"
-	return ioutil.WriteFile("data/" + filename, p.Body, 0600)
+	return ioutil.WriteFile("data/" + filename, p.Content, 0600)
 }
 
 func loadPage(title string) (*Page, error) {
@@ -35,7 +36,7 @@ func loadPage(title string) (*Page, error) {
 		return nil, err
 	}
 
-	return &Page{Title: title, Body: body}, nil
+	return &Page{Title: title, Content: body}, nil
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
@@ -70,7 +71,7 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	body := r.FormValue("body")
 
-	p := &Page{ Title: title, Body: []byte(body) }
+	p := &Page{ Title: title, Content: []byte(body) }
 	err := p.save()
 
 	if err != nil {
@@ -94,11 +95,39 @@ func makeHandler(fn func (http.ResponseWriter, *http.Request, string)) http.Hand
 	}
 }
 
+func getPages() []Page {
+	pages := []Page{}
+
+	rows, err := DATABASE.Query("SELECT * FROM pages")
+
+	if err != nil {
+		log.Fatalf("Select error: %s", err)
+		return pages
+	}
+
+	for rows.Next() {
+		var page Page
+
+		err = rows.Scan(&page.Id, &page.Title, &page.Content)
+
+		if err != nil {
+			log.Fatalf("scan error: %s", err)
+		}
+
+		pages = append(pages, page)
+	}
+
+	return pages
+}
+
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	pages := getPages()
+
 	params := struct {
 		Name string
 		Year int
-	} { "Blog system", time.Now().Year() }
+		Pages []Page
+	} { "Blog system", time.Now().Year(), pages }
 
 	err := templates.ExecuteTemplate(w, "index.html", params)
 
@@ -116,13 +145,13 @@ func db() {
 		log.Fatal("No database")
 	}
 
-	stmt, err := DATABASE.Prepare("INSERT INTO pages(title, content) VALUES(?,?)")
-
-	if err != nil {
-		log.Fatal("Insert issue")
-	}
-
-	_, err = stmt.Exec("test", "cont")
+	//stmt, err := DATABASE.Prepare("INSERT INTO pages(title, content) VALUES(?,?)")
+	//
+	//if err != nil {
+	//	log.Fatal("Insert issue")
+	//}
+	//
+	//_, err = stmt.Exec("test", "cont")
 }
 
 func main() {
