@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"net/http"
 	"html/template"
 	"regexp"
@@ -22,11 +21,6 @@ type Page struct {
 	Id int
 	Title string
 	Content []byte
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile("data/" + filename, p.Content, 0600)
 }
 
 func loadPage(id int64) (*Page, error) {
